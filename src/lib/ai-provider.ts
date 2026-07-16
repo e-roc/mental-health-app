@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { encrypt } from "@/lib/crypto";
-import { publishMessage } from "@/lib/events";
+import { publishMessage, publishSessionUpdate } from "@/lib/events";
 
 /**
  * Demo AI test providers. They accept sessions immediately and send canned
@@ -20,17 +20,27 @@ const REPLIES = [
   "That's understandable. Would it help to explore some strategies together for managing those moments?",
 ];
 
+/**
+ * Connect an AI demo provider to a session. Claims conditionally on PENDING:
+ * a human manning the AI account may have accepted manually a moment ago, and
+ * the sweeper and the user's lazy expiry can both reach the deadline at once.
+ * Losing the claim is normal — return without writing a greeting rather than
+ * resurrecting the session or talking over the human who took it.
+ */
 export async function aiAcceptSession(
   sessionId: string,
   aiUserId: string
 ): Promise<void> {
-  await prisma.chatSession.update({
-    where: { id: sessionId },
+  const claimed = await prisma.chatSession.updateMany({
+    where: { id: sessionId, status: "PENDING" },
     data: { status: "ACTIVE", acceptedAt: new Date() },
   });
+  if (claimed.count === 0) return;
+
   await prisma.message.create({
     data: { sessionId, senderId: aiUserId, bodyEnc: encrypt(GREETING) },
   });
+  await publishSessionUpdate(sessionId);
   await publishMessage(sessionId);
 }
 
