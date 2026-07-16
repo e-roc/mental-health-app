@@ -16,7 +16,8 @@ import type { ConcernTag } from "@/lib/questionnaire";
 /**
  * Route a user to an available provider: create a PENDING chat session with a
  * connect deadline and ping the provider with their join link. AI demo
- * providers accept immediately so the flow is testable end-to-end.
+ * providers wait out the window like humans and connect at the deadline (see
+ * expireAndRereoute), so a person manning the account can take over first.
  *
  * Concurrency: a partial unique index guarantees at most one PENDING/ACTIVE
  * session per provider. Routing is a claim loop — try the best match, and if
@@ -64,9 +65,9 @@ export async function routeUserToProvider(opts: {
       await pingProvider(session.provider, session.id, windowMinutes);
       await publishProviderPing(chosen.userId);
 
-      if (session.provider.isAI) {
-        await aiAcceptSession(session.id, session.provider.userId);
-      }
+      // AI demo providers are routed exactly like humans and wait out the
+      // connect window: the window is what gives a person manning the AI
+      // account time to take over. The sweeper connects them at the deadline.
       await publishSessionUpdate(session.id);
       return session;
     } catch (err) {
@@ -86,7 +87,8 @@ export async function routeUserToProvider(opts: {
 }
 
 /**
- * Expire a PENDING session whose connect window has lapsed and try the next
+ * Handle a PENDING session whose connect window has lapsed: AI providers
+ * connect, human providers expire and the user is re-routed to the next
  * provider. Called by the background sweeper and lazily from the user's
  * session GET. Uses a conditional update as the claim so concurrent callers
  * (sweeper + user poll) can't both re-route. Returns the session the user
@@ -95,10 +97,19 @@ export async function routeUserToProvider(opts: {
 export async function expireAndRereoute(sessionId: string): Promise<ChatSession> {
   const session = await prisma.chatSession.findUniqueOrThrow({
     where: { id: sessionId },
-    include: { questionnaire: true },
+    include: { questionnaire: true, provider: true },
   });
   if (session.status !== "PENDING" || session.connectBy > new Date()) {
     return session;
+  }
+
+  // AI demo providers connect at the deadline rather than expiring: the
+  // window exists to give a human manning the account time to take over,
+  // not to drop the user. aiAcceptSession claims conditionally, so if that
+  // human already accepted, this no-ops and the session stays theirs.
+  if (session.provider.isAI) {
+    await aiAcceptSession(session.id, session.provider.userId);
+    return prisma.chatSession.findUniqueOrThrow({ where: { id: sessionId } });
   }
 
   const claimed = await prisma.chatSession.updateMany({
