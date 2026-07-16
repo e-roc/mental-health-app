@@ -1,0 +1,176 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  PROVIDER
+  ADMIN
+}
+
+enum SessionStatus {
+  PENDING
+  ACTIVE
+  EXPIRED
+  CLOSED
+}
+
+enum MatchType {
+  MATCHED
+  RANDOM_FALLBACK
+}
+
+enum RiskLevel {
+  LOW
+  MODERATE
+  HIGH
+}
+
+model User {
+  id           String   @id @default(cuid())
+  role         Role
+  // PII is encrypted at rest (AES-256-GCM). Email lookup uses an HMAC blind index.
+  emailHash    String   @unique
+  emailEnc     String
+  nameEnc      String
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  providerProfile ProviderProfile?
+  questionnaires  Questionnaire[]
+  userSessions    ChatSession[]    @relation("UserSessions")
+  authSessions    AuthSession[]
+  messages        Message[]
+
+  @@index([role, createdAt])
+}
+
+// An admin-issued invitation for a new provider to create their account.
+// The raw token lives only in the invite link; we store its HMAC.
+model ProviderInvite {
+  id          String    @id @default(cuid())
+  tokenHash   String    @unique
+  emailHash   String
+  emailEnc    String
+  nameEnc     String
+  invitedById String
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([emailHash])
+}
+
+model AuthSession {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model ProviderProfile {
+  id          String  @id @default(cuid())
+  userId      String  @unique
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  specialties String[] @default([])
+  bio         String  @default("")
+  isAvailable Boolean @default(false)
+  // When true, isAvailable is driven by ScheduleBlocks (auto-switched);
+  // when false, the provider controls the flag manually.
+  useSchedule Boolean @default(false)
+  isAI        Boolean @default(false)
+
+  schedule ScheduleBlock[]
+  sessions ChatSession[]   @relation("ProviderSessions")
+
+  @@index([isAvailable])
+  @@index([useSchedule])
+}
+
+model ScheduleBlock {
+  id         String          @id @default(cuid())
+  providerId String
+  provider   ProviderProfile @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  // 0 = Sunday ... 6 = Saturday, minutes since midnight (server-local time)
+  dayOfWeek  Int
+  startMin   Int
+  endMin     Int
+
+  @@index([providerId])
+}
+
+model Questionnaire {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Full answers encrypted at rest (health data / PII)
+  answersEnc  String
+  // Concern tags extracted for provider matching, also encrypted
+  concernsEnc String
+  riskLevel   RiskLevel @default(LOW)
+  createdAt   DateTime  @default(now())
+
+  chatSessions ChatSession[]
+
+  @@index([userId, createdAt])
+}
+
+model ChatSession {
+  id              String          @id @default(cuid())
+  userId          String
+  user            User            @relation("UserSessions", fields: [userId], references: [id], onDelete: Cascade)
+  providerId      String
+  provider        ProviderProfile @relation("ProviderSessions", fields: [providerId], references: [id], onDelete: Cascade)
+  questionnaireId String?
+  questionnaire   Questionnaire?  @relation(fields: [questionnaireId], references: [id])
+  // PENDING: provider pinged, must accept before connectBy
+  // ACTIVE: provider connected; EXPIRED: provider missed window; CLOSED: ended
+  status     SessionStatus @default(PENDING)
+  matchType  MatchType     @default(MATCHED)
+  connectBy  DateTime
+  acceptedAt DateTime?
+  closedAt   DateTime?
+  createdAt  DateTime      @default(now())
+  // Set once a human authenticated as the (AI test) provider opens this
+  // session's chat. Permanently disables the canned auto-reply for the rest
+  // of the session, so a person manning the account doesn't get talked over.
+  humanTakeover Boolean @default(false)
+
+  messages Message[]
+
+  // A partial unique index (added in raw SQL in the migration) additionally
+  // guarantees at most one PENDING/ACTIVE session per provider, closing the
+  // race where two concurrent routings would double-book a provider.
+  @@index([providerId, status])
+  @@index([userId, status])
+  @@index([status, connectBy])
+}
+
+model Message {
+  id        String      @id @default(cuid())
+  sessionId String
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  senderId  String
+  sender    User        @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  // Message body encrypted at rest
+  bodyEnc   String
+  createdAt DateTime    @default(now())
+
+  @@index([sessionId, createdAt])
+}
+
+model Setting {
+  key   String @id
+  value String
+}
