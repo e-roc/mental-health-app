@@ -111,17 +111,19 @@ already generic and stay as-is. The provider-side PENDING view is unchanged.
 **`src/app/api/sessions/[id]/close/route.ts`**: set `closedById: user.id` in the
 existing `updateMany` that transitions to CLOSED. No other logic changes.
 
-**`src/app/api/sessions/[id]/route.ts`** (GET): return `closedByMe: boolean`
-(`session.closedById === user.id`) when status is CLOSED. Reuses the existing
+**`src/app/api/sessions/[id]/route.ts`** (GET): return
+`closedBy: "me" | "them" | null`. Tri-state rather than a boolean because
+sessions closed before this migration have `closedById = null` — a boolean would
+collapse "nobody recorded" into "they closed it" and render a false attribution.
+`null` covers both the not-CLOSED and the legacy case. Reuses the existing
 `counterpartName` field rather than adding a second name field.
 
-**`src/components/ChatRoom.tsx`**: when status is CLOSED, the header subtitle and
-footer read "You ended this conversation." or "{counterpartName} ended this
-conversation." The EXPIRED branch is separate and untouched — nobody ends an
-expired session.
-
-Sessions closed before this migration have `closedById = null`; they fall back to
-the current neutral "This conversation has ended."
+**`src/components/ChatRoom.tsx`**: when status is CLOSED, the chat footer reads
+"You ended this conversation." (`me`), "{counterpartName} ended this
+conversation." (`them`), or the current neutral "This conversation has ended."
+(`null`). The header subtitle stays "Chat ended" — attribution lives in one place
+only, and the header has no room for a name. The EXPIRED branch is separate and
+untouched — nobody ends an expired session.
 
 ## Error Handling & Concurrency
 
