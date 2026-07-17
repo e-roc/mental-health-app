@@ -22,6 +22,7 @@ interface SessionState {
   viewerId: string;
   viewerRole: "user" | "provider";
   aiTakeover: boolean;
+  closedBy: "me" | "them" | null;
   messages: ChatMessage[];
 }
 
@@ -58,6 +59,14 @@ function BreathingIndicator() {
       <div className="absolute inset-8 rounded-full bg-fern/70" />
     </div>
   );
+}
+
+function endedNote(session: SessionState): string {
+  if (session.closedBy === "me") return "You ended this conversation.";
+  if (session.closedBy === "them") {
+    return `${session.counterpartName} ended this conversation.`;
+  }
+  return "This conversation has ended.";
 }
 
 export function ChatRoom({ sessionId }: { sessionId: string }) {
@@ -200,7 +209,7 @@ export function ChatRoom({ sessionId }: { sessionId: string }) {
         {session.viewerRole === "user" ? (
           <>
             <h1 className="font-serif text-3xl font-medium tracking-tight text-ink">
-              Connecting you with {session.counterpartName}…
+              A clinician is on their way
             </h1>
             <p className="mt-4 leading-relaxed text-ink-soft">
               We&apos;ve notified your provider. If they can&apos;t join in
@@ -319,7 +328,7 @@ export function ChatRoom({ sessionId }: { sessionId: string }) {
         </form>
       ) : (
         <div className="border-t border-edge/70 p-4 text-center text-sm text-ink-faint">
-          This conversation has ended.
+          {endedNote(session)}
         </div>
       )}
     </div>
