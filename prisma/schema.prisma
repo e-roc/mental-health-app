@@ -46,6 +46,7 @@ model User {
   userSessions    ChatSession[]    @relation("UserSessions")
   authSessions    AuthSession[]
   messages        Message[]
+  closedSessions  ChatSession[]    @relation("ClosedSessions")
 
   @@index([role, createdAt])
 }
@@ -141,6 +142,10 @@ model ChatSession {
   connectBy  DateTime
   acceptedAt DateTime?
   closedAt   DateTime?
+  // Who ended the chat. Null for EXPIRED sessions (nobody ended them) and for
+  // rows closed before this column existed.
+  closedById String?
+  closedBy   User?    @relation("ClosedSessions", fields: [closedById], references: [id], onDelete: SetNull)
   createdAt  DateTime      @default(now())
   // Set once a human authenticated as the (AI test) provider opens this
   // session's chat. Permanently disables the canned auto-reply for the rest
