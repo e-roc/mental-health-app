@@ -3,9 +3,11 @@ import { encrypt } from "@/lib/crypto";
 import { publishMessage, publishSessionUpdate } from "@/lib/events";
 
 /**
- * Demo AI test providers. They accept sessions immediately and send canned
- * supportive replies so the full user flow can be exercised without a real
- * human on the other end. Real providers go through the ping/accept flow.
+ * Demo AI test providers. They're routed and pinged just like real providers
+ * and wait out the connect window — that's what gives a human manning the
+ * account a chance to take over first — then connect at the deadline (see
+ * expireAndRereoute) and send canned supportive replies so the full user flow
+ * can be exercised without a real human on the other end.
  */
 
 const GREETING =
