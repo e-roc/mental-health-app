@@ -76,12 +76,12 @@ describe("routeUserToProvider", () => {
 describe("expireAndRereoute", () => {
   it("connects an AI provider at the deadline instead of expiring", async () => {
     vi.mocked(prisma.chatSession.findUniqueOrThrow).mockImplementation(
-      ((args: { include?: unknown }) =>
+      (args: { include?: unknown }) =>
         Promise.resolve(
           args.include
             ? pendingSession({ provider: { id: "p1", userId: "ai-user", isAI: true } })
             : pendingSession({ status: "ACTIVE", provider: { id: "p1", userId: "ai-user", isAI: true } })
-        )) as never
+        ) as never
     );
 
     const result = await expireAndRereoute("s1");
