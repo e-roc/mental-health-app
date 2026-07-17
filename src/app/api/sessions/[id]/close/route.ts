@@ -32,7 +32,7 @@ export async function POST(
 
   await prisma.chatSession.updateMany({
     where: { id: session.id, status: { in: ["PENDING", "ACTIVE"] } },
-    data: { status: "CLOSED", closedAt: new Date() },
+    data: { status: "CLOSED", closedAt: new Date(), closedById: user.id },
   });
   await publishSessionUpdate(session.id);
   return NextResponse.json({ ok: true });

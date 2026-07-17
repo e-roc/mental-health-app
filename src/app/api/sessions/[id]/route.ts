@@ -70,6 +70,14 @@ export async function GET(
     viewerRole: isUser ? "user" : "provider",
     // Lets the provider UI show "you've taken over from the AI" once relevant.
     aiTakeover: isProvider && session.provider.isAI && session.humanTakeover,
+    // Tri-state, not a boolean: rows closed before closedById existed have no
+    // recorded closer, and a boolean would render that as "they ended it".
+    closedBy:
+      session.status !== "CLOSED" || !session.closedById
+        ? null
+        : session.closedById === user.id
+          ? "me"
+          : "them",
     messages: messages.map((m) => ({
       id: m.id,
       mine: m.senderId === user.id,
