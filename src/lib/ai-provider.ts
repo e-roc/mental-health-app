@@ -28,6 +28,13 @@ const REPLIES = [
  * the sweeper and the user's lazy expiry can both reach the deadline at once.
  * Losing the claim is normal — return without writing a greeting rather than
  * resurrecting the session or talking over the human who took it.
+ *
+ * Note: the claim intentionally does not exclude humanTakeover. A human who
+ * merely opened the chat (which sets humanTakeover) but never accepted before
+ * the deadline hasn't actually taken the session — so we still connect it and
+ * write the greeting. That greeting is the user's only message if the human
+ * never returns to type, since ongoing auto-replies (aiMaybeReply) are already
+ * off once humanTakeover is set. An empty room would be worse.
  */
 export async function aiAcceptSession(
   sessionId: string,
