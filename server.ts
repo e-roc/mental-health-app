@@ -23,7 +23,12 @@ import { syncScheduledAvailability } from "@/lib/availability";
 validateEnv();
 
 const dev = process.env.NODE_ENV !== "production";
-const port = Number(process.env.PORT ?? 3000);
+// When PORT is set explicitly we honor it exactly and fail on conflict. When
+// it's unset we start from 3000 and probe upward on EADDRINUSE so a stray
+// process on the default port doesn't block local dev.
+const portExplicit = process.env.PORT != null && process.env.PORT !== "";
+const startPort = Number(process.env.PORT ?? 3000);
+const MAX_PORT_ATTEMPTS = 20;
 
 const EXPIRY_SWEEP_MS = 10_000;
 const AVAILABILITY_SYNC_MS = 30_000;
@@ -83,11 +88,27 @@ async function main() {
     }, AUTH_CLEANUP_MS),
   ];
 
-  server.listen(port, () => {
-    console.log(
-      `[server] ready on http://localhost:${port} (${dev ? "dev" : "production"})`
-    );
-  });
+  const listen = (port: number, attemptsLeft: number) => {
+    server.once("error", (err: NodeJS.ErrnoException) => {
+      if (err.code !== "EADDRINUSE") throw err;
+      if (portExplicit || attemptsLeft <= 0) {
+        console.error(
+          `[server] port ${port} in use${
+            portExplicit ? "" : ` (gave up after ${MAX_PORT_ATTEMPTS} attempts)`
+          }`
+        );
+        process.exit(1);
+      }
+      console.warn(`[server] port ${port} in use, trying ${port + 1}`);
+      listen(port + 1, attemptsLeft - 1);
+    });
+    server.listen(port, () => {
+      console.log(
+        `[server] ready on http://localhost:${port} (${dev ? "dev" : "production"})`
+      );
+    });
+  };
+  listen(startPort, MAX_PORT_ATTEMPTS);
 
   let shuttingDown = false;
   const shutdown = async (signal: string) => {

@@ -5,17 +5,11 @@ import { useRouter } from "next/navigation";
 import {
   CONCERN_LABELS,
   CONCERN_TAGS,
+  FREQUENCY_LABELS,
   FREQUENCY_OPTIONS,
   type QuestionnaireAnswers,
 } from "@/lib/questionnaire";
 import { btnPrimary, btnQuiet, errorText } from "@/lib/ui";
-
-const FREQUENCY_LABELS: Record<string, string> = {
-  "not-at-all": "Not at all",
-  "several-days": "Several days",
-  "more-than-half": "More than half the days",
-  "nearly-every-day": "Nearly every day",
-};
 
 const legendStyle = "font-serif text-lg font-semibold text-ink";
 const optionRow =

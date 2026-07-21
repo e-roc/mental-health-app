@@ -1,11 +1,13 @@
 import { prisma } from "@/lib/db";
 import { encrypt } from "@/lib/crypto";
-import { publishMessage } from "@/lib/events";
+import { publishMessage, publishSessionUpdate } from "@/lib/events";
 
 /**
- * Demo AI test providers. They accept sessions immediately and send canned
- * supportive replies so the full user flow can be exercised without a real
- * human on the other end. Real providers go through the ping/accept flow.
+ * Demo AI test providers. They're routed and pinged just like real providers
+ * and wait out the connect window — that's what gives a human manning the
+ * account a chance to take over first — then connect at the deadline (see
+ * expireAndRereoute) and send canned supportive replies so the full user flow
+ * can be exercised without a real human on the other end.
  */
 
 const GREETING =
@@ -20,17 +22,34 @@ const REPLIES = [
   "That's understandable. Would it help to explore some strategies together for managing those moments?",
 ];
 
+/**
+ * Connect an AI demo provider to a session. Claims conditionally on PENDING:
+ * a human manning the AI account may have accepted manually a moment ago, and
+ * the sweeper and the user's lazy expiry can both reach the deadline at once.
+ * Losing the claim is normal — return without writing a greeting rather than
+ * resurrecting the session or talking over the human who took it.
+ *
+ * Note: the claim intentionally does not exclude humanTakeover. A human who
+ * merely opened the chat (which sets humanTakeover) but never accepted before
+ * the deadline hasn't actually taken the session — so we still connect it and
+ * write the greeting. That greeting is the user's only message if the human
+ * never returns to type, since ongoing auto-replies (aiMaybeReply) are already
+ * off once humanTakeover is set. An empty room would be worse.
+ */
 export async function aiAcceptSession(
   sessionId: string,
   aiUserId: string
 ): Promise<void> {
-  await prisma.chatSession.update({
-    where: { id: sessionId },
+  const claimed = await prisma.chatSession.updateMany({
+    where: { id: sessionId, status: "PENDING" },
     data: { status: "ACTIVE", acceptedAt: new Date() },
   });
+  if (claimed.count === 0) return;
+
   await prisma.message.create({
     data: { sessionId, senderId: aiUserId, bodyEnc: encrypt(GREETING) },
   });
+  await publishSessionUpdate(sessionId);
   await publishMessage(sessionId);
 }
 

@@ -58,6 +58,44 @@ export const questionnaireSchema = z.object({
 
 export type QuestionnaireAnswers = z.infer<typeof questionnaireSchema>;
 
+/**
+ * Human-readable labels for answer values and fields — shared by the intake
+ * form and the provider-facing intake sidebar so both render values identically.
+ */
+export const FREQUENCY_LABELS: Record<
+  (typeof FREQUENCY_OPTIONS)[number],
+  string
+> = {
+  "not-at-all": "Not at all",
+  "several-days": "Several days",
+  "more-than-half": "More than half the days",
+  "nearly-every-day": "Nearly every day",
+};
+
+export const SLEEP_LABELS: Record<"good" | "fair" | "poor", string> = {
+  good: "Good",
+  fair: "Fair",
+  poor: "Poor",
+};
+
+export const YES_NO_LABELS: Record<"yes" | "no", string> = {
+  yes: "Yes",
+  no: "No",
+};
+
+/** Short headings for each answer field in compact summaries (e.g. the sidebar). */
+export const FIELD_LABELS: Record<
+  keyof Omit<QuestionnaireAnswers, "concerns">,
+  string
+> = {
+  moodFrequency: "Low mood",
+  anxietyFrequency: "Anxiety",
+  sleepQuality: "Sleep",
+  priorSupport: "Prior support",
+  safetyConcern: "Safety concern",
+  additionalNotes: "Notes",
+};
+
 export type RiskLevel = "LOW" | "MODERATE" | "HIGH";
 
 /**
