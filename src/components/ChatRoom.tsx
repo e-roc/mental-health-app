@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePoll } from "@/lib/usePoll";
 import { useRealtime, type RealtimeEvent } from "@/lib/useRealtime";
 import { btnPrimary, btnSecondary, pill } from "@/lib/ui";
+import { IntakeSidebar } from "@/components/IntakeSidebar";
 
 interface ChatMessage {
   id: string;
@@ -265,8 +266,9 @@ export function ChatRoom({ sessionId }: { sessionId: string }) {
   }
 
   return (
-    <div className="rise mx-auto flex h-[70vh] max-w-2xl flex-col overflow-hidden rounded-3xl border border-edge/70 bg-surface shadow-[0_30px_70px_-40px_rgba(34,51,44,0.4)]">
-      <div className="flex items-center justify-between border-b border-edge/70 px-5 py-4">
+    <div className="mx-auto flex max-w-5xl items-start justify-center gap-4">
+      <div className="rise flex h-[70vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-edge/70 bg-surface shadow-[0_30px_70px_-40px_rgba(34,51,44,0.4)]">
+        <div className="flex items-center justify-between border-b border-edge/70 px-5 py-4">
         <div>
           <p className="font-serif text-lg font-semibold text-ink">
             {session.counterpartName}
@@ -330,6 +332,10 @@ export function ChatRoom({ sessionId }: { sessionId: string }) {
         <div className="border-t border-edge/70 p-4 text-center text-sm text-ink-faint">
           {endedNote(session)}
         </div>
+      )}
+      </div>
+      {session.viewerRole === "provider" && (
+        <IntakeSidebar sessionId={session.id} />
       )}
     </div>
   );
