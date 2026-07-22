@@ -7,6 +7,7 @@ import { usePoll } from "@/lib/usePoll";
 import { useRealtime, type RealtimeEvent } from "@/lib/useRealtime";
 import { btnPrimary, btnSecondary, pill } from "@/lib/ui";
 import { IntakeSidebar } from "@/components/IntakeSidebar";
+import { DEFAULT_PROVIDER_GREETING } from "@/lib/greeting";
 
 interface ChatMessage {
   id: string;
@@ -75,6 +76,9 @@ export function ChatRoom({ sessionId }: { sessionId: string }) {
   const [session, setSession] = useState<SessionState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
+  // Provider's editable first message, prefilled with the app default and sent
+  // on accept. Only used in the provider PENDING branch.
+  const [greeting, setGreeting] = useState(DEFAULT_PROVIDER_GREETING);
   const [busy, setBusy] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const messageCount = useRef(0);
@@ -162,8 +166,13 @@ export function ChatRoom({ sessionId }: { sessionId: string }) {
   }
 
   async function accept() {
+    if (!greeting.trim() || busy) return;
     setBusy(true);
-    const res = await fetch(`/api/sessions/${sessionId}/accept`, { method: "POST" });
+    const res = await fetch(`/api/sessions/${sessionId}/accept`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: greeting }),
+    });
     setBusy(false);
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
@@ -230,10 +239,29 @@ export function ChatRoom({ sessionId }: { sessionId: string }) {
               Accept within {clock} or the request will be routed to another
               provider.
             </p>
+            <label
+              htmlFor="greeting"
+              className="mt-8 block text-left text-sm font-medium text-ink-soft"
+            >
+              First message
+            </label>
+            <p className="mt-1 text-left text-xs text-ink-faint">
+              Sent to {session.counterpartName} the moment you join. Edit it if
+              you like.
+            </p>
+            <textarea
+              id="greeting"
+              value={greeting}
+              onChange={(e) => setGreeting(e.target.value)}
+              rows={4}
+              maxLength={4000}
+              disabled={busy}
+              className="mt-2 w-full resize-y rounded-xl border border-edge/60 bg-surface px-4 py-3 text-left leading-relaxed text-ink outline-none focus:border-ink-faint"
+            />
             <button
               onClick={accept}
-              disabled={busy}
-              className={`${btnPrimary} mt-8 px-8 py-3`}
+              disabled={busy || !greeting.trim()}
+              className={`${btnPrimary} mt-4 px-8 py-3`}
             >
               Accept and join chat
             </button>
