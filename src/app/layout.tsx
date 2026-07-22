@@ -4,6 +4,7 @@ import { Cormorant_Garamond, Mulish } from "next/font/google";
 import { getCurrentUser } from "@/lib/auth";
 import { userName } from "@/lib/pii";
 import { LogoutButton } from "@/components/LogoutButton";
+import { CrisisBar } from "@/components/CrisisBar";
 import "./globals.css";
 
 const cormorant = Cormorant_Garamond({
@@ -97,11 +98,7 @@ export default async function RootLayout({
             </nav>
           </div>
         </header>
-        <div className="border-b border-clay/15 bg-clay-mist px-6 py-2 text-center text-xs text-clay">
-          If you are in crisis or thinking about harming yourself, call or text{" "}
-          <strong>988</strong>&nbsp;(Suicide &amp; Crisis Lifeline, US) or your
-          local emergency number now.
-        </div>
+        <CrisisBar isProvider={user?.role === "PROVIDER"} />
         <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-6 py-12">
           {children}
         </main>

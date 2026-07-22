@@ -5,7 +5,20 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { btnPrimary, errorText, field, fieldLabel } from "@/lib/ui";
 
-export function AuthForm({ mode }: { mode: "login" | "register" }) {
+export function AuthForm({
+  mode,
+  title,
+  subtitle,
+  showRegisterLink = true,
+}: {
+  mode: "login" | "register";
+  /** Overrides the default heading (e.g. for a provider-branded login). */
+  title?: string;
+  /** Overrides the default sub-heading copy. */
+  subtitle?: string;
+  /** Hide the "No account? Sign up" link (providers are invite-only). */
+  showRegisterLink?: boolean;
+}) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -41,12 +54,13 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
   return (
     <div className="rise mx-auto max-w-sm pt-8">
       <h1 className="font-serif text-4xl font-medium tracking-tight text-ink">
-        {mode === "login" ? "Welcome back" : "Create your account"}
+        {title ?? (mode === "login" ? "Welcome back" : "Create your account")}
       </h1>
       <p className="mt-3 text-sm leading-relaxed text-ink-soft">
-        {mode === "login"
-          ? "Pick up where you left off."
-          : "A few details, then you can reach a provider in minutes."}
+        {subtitle ??
+          (mode === "login"
+            ? "Pick up where you left off."
+            : "A few details, then you can reach a provider in minutes.")}
       </p>
       <form onSubmit={onSubmit} className="mt-8 space-y-5">
         {mode === "register" && (
@@ -76,6 +90,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
           {busy ? "Please wait…" : mode === "login" ? "Log in" : "Sign up"}
         </button>
       </form>
+      {!(mode === "login" && !showRegisterLink) && (
       <p className="mt-6 text-sm text-ink-soft">
         {mode === "login" ? (
           <>
@@ -99,6 +114,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
           </>
         )}
       </p>
+      )}
     </div>
   );
 }
