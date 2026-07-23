@@ -19,7 +19,7 @@ export async function GET() {
 
   await syncScheduledAvailability();
 
-  const [users, providers, sessions, invites, connectWindowMinutes] = await Promise.all([
+  const [users, providers, sessions, invites, allowedEmails, connectWindowMinutes] = await Promise.all([
     prisma.user.findMany({
       where: { role: "USER" },
       orderBy: { createdAt: "desc" },
@@ -37,6 +37,7 @@ export async function GET() {
       include: { user: true, provider: { include: { user: true } } },
     }),
     prisma.providerInvite.findMany({ orderBy: { createdAt: "desc" }, take: 50 }),
+    prisma.allowedEmail.findMany({ orderBy: { createdAt: "desc" }, take: 200 }),
     getConnectWindowMinutes(),
   ]);
 
@@ -51,6 +52,11 @@ export async function GET() {
       status: inviteStatus(i),
       expiresAt: i.expiresAt,
       createdAt: i.createdAt,
+    })),
+    allowedEmails: allowedEmails.map((a) => ({
+      id: a.id,
+      email: decrypt(a.emailEnc),
+      createdAt: a.createdAt,
     })),
     users: users.map((u) => ({
       id: u.id,

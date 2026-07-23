@@ -68,6 +68,16 @@ model ProviderInvite {
   @@index([emailHash])
 }
 
+// Emails an admin has pre-approved for self-registration. Registration is
+// invite-only: the register route rejects any email not listed here.
+model AllowedEmail {
+  id        String   @id @default(cuid())
+  emailHash String   @unique
+  emailEnc  String
+  addedById String
+  createdAt DateTime @default(now())
+}
+
 model AuthSession {
   id        String   @id @default(cuid())
   tokenHash String   @unique
