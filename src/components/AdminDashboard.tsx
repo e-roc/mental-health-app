@@ -3,6 +3,8 @@
 import { useCallback, useState } from "react";
 import { useRealtime } from "@/lib/useRealtime";
 import { ProviderInvites, type InviteRow } from "@/components/ProviderInvites";
+import { AllowedEmails, type AllowedEmailRow } from "@/components/AllowedEmails";
+import { AccountSecurity } from "@/components/AccountSecurity";
 import {
   btnPrimary,
   card,
@@ -16,6 +18,7 @@ import {
 interface Overview {
   settings: { connectWindowMinutes: number };
   invites: InviteRow[];
+  allowedEmails: AllowedEmailRow[];
   users: {
     id: string;
     name: string;
@@ -109,6 +112,20 @@ export function AdminDashboard() {
     load();
   }
 
+  const [confirmingUserId, setConfirmingUserId] = useState<string | null>(null);
+
+  async function deleteUser(id: string) {
+    setError(null);
+    const res = await fetch(`/api/admin/users/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      setError(d.error ?? "Failed to delete user");
+      return;
+    }
+    setConfirmingUserId(null);
+    load();
+  }
+
   if (!data) return <p className="pt-12 text-center text-ink-faint">Loading…</p>;
 
   const activeSessions = data.sessions.filter(
@@ -194,6 +211,10 @@ export function AdminDashboard() {
 
       <div className="rise rise-4">
         <ProviderInvites invites={data.invites} onChange={load} />
+      </div>
+
+      <div className="rise rise-4">
+        <AllowedEmails emails={data.allowedEmails} onChange={load} />
       </div>
 
       <section className={`rise rise-4 ${card}`}>
@@ -289,6 +310,7 @@ export function AdminDashboard() {
                 <th className={th}>Email</th>
                 <th className={th}>Last risk level</th>
                 <th className={`${th} pr-0`}>Joined</th>
+                <th className="py-2.5"></th>
               </tr>
             </thead>
             <tbody>
@@ -316,11 +338,36 @@ export function AdminDashboard() {
                   <td className="py-2.5 text-xs tabular-nums text-ink-faint">
                     {new Date(u.createdAt).toLocaleDateString()}
                   </td>
+                  <td className="py-2.5 text-right">
+                    {confirmingUserId === u.id ? (
+                      <span className="inline-flex items-center gap-2">
+                        <button
+                          onClick={() => deleteUser(u.id)}
+                          className="text-xs font-semibold text-rose hover:text-rose"
+                        >
+                          Confirm
+                        </button>
+                        <button
+                          onClick={() => setConfirmingUserId(null)}
+                          className="text-xs text-ink-faint hover:text-ink-soft"
+                        >
+                          Cancel
+                        </button>
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmingUserId(u.id)}
+                        className="text-xs text-ink-faint transition-colors duration-300 hover:text-rose"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
               {data.users.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="py-6 text-center text-ink-faint">
+                  <td colSpan={5} className="py-6 text-center text-ink-faint">
                     No users yet
                   </td>
                 </tr>
@@ -328,6 +375,10 @@ export function AdminDashboard() {
             </tbody>
           </table>
         </div>
+      </section>
+
+      <section className="rise rise-4">
+        <AccountSecurity />
       </section>
     </div>
   );
