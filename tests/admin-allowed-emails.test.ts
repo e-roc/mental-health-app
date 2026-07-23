@@ -10,6 +10,8 @@ vi.mock("@/lib/auth", () => ({ requireRole: vi.fn() }));
 
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
+import { blindIndex, decrypt } from "@/lib/crypto";
+import { normalizeEmail } from "@/lib/email";
 import { POST } from "@/app/api/admin/allowed-emails/route";
 import { DELETE } from "@/app/api/admin/allowed-emails/[id]/route";
 
@@ -37,6 +39,9 @@ describe("POST /api/admin/allowed-emails", () => {
     vi.mocked(requireRole).mockResolvedValue(ADMIN as never);
     vi.mocked(prisma.allowedEmail.findUnique).mockResolvedValue({ id: "x" } as never);
     expect((await POST(post({ email: "a@b.com" }))).status).toBe(409);
+    expect(prisma.allowedEmail.findUnique).toHaveBeenCalledWith({
+      where: { emailHash: blindIndex(normalizeEmail("a@b.com")) },
+    });
   });
   it("200 and creates when new", async () => {
     vi.mocked(requireRole).mockResolvedValue(ADMIN as never);
@@ -46,6 +51,21 @@ describe("POST /api/admin/allowed-emails", () => {
     expect(res.status).toBe(200);
     expect((await res.json()).email).toBe("new@b.com");
     expect(prisma.allowedEmail.create).toHaveBeenCalled();
+    const arg = vi.mocked(prisma.allowedEmail.create).mock.calls[0][0] as {
+      data: { emailHash: string; emailEnc: string; addedById: string };
+    };
+    expect(arg.data.emailHash).toBe(blindIndex(normalizeEmail("New@B.com")));
+    expect(arg.data.addedById).toBe("admin1");
+    expect(decrypt(arg.data.emailEnc)).toBe("new@b.com");
+  });
+  it("409 when a concurrent insert hits the unique constraint", async () => {
+    vi.mocked(requireRole).mockResolvedValue(ADMIN as never);
+    vi.mocked(prisma.allowedEmail.findUnique).mockResolvedValue(null as never);
+    vi.mocked(prisma.allowedEmail.create).mockRejectedValue(
+      Object.assign(new Error("unique"), { code: "P2002" }) as never
+    );
+    const res = await POST(post({ email: "a@b.com" }));
+    expect(res.status).toBe(409);
   });
 });
 

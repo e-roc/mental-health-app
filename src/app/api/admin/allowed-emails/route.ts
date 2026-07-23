@@ -30,8 +30,18 @@ export async function POST(req: Request) {
     );
   }
 
-  const created = await prisma.allowedEmail.create({
-    data: { emailHash, emailEnc: encrypt(email), addedById: admin.id },
-  });
-  return NextResponse.json({ id: created.id, email, createdAt: created.createdAt });
+  try {
+    const created = await prisma.allowedEmail.create({
+      data: { emailHash, emailEnc: encrypt(email), addedById: admin.id },
+    });
+    return NextResponse.json({ id: created.id, email, createdAt: created.createdAt });
+  } catch (e) {
+    if (e && typeof e === "object" && "code" in e && (e as { code?: string }).code === "P2002") {
+      return NextResponse.json(
+        { error: "That email is already on the allowlist" },
+        { status: 409 }
+      );
+    }
+    throw e;
+  }
 }
