@@ -15,7 +15,7 @@ vi.mock("@/lib/auth", () => ({
 import { prisma } from "@/lib/db";
 import { createSession } from "@/lib/auth";
 import { resetRateLimiter } from "@/lib/ratelimit";
-import { blindIndex } from "@/lib/crypto";
+import { blindIndex, decrypt } from "@/lib/crypto";
 import { normalizeEmail } from "@/lib/email";
 import { POST } from "@/app/api/auth/register/route";
 
@@ -70,6 +70,11 @@ describe("POST /api/auth/register (allowlist gate)", () => {
     expect(res.status).toBe(200);
     expect(body.ok).toBe(true);
     expect(createSession).toHaveBeenCalledWith("u1");
+
+    const createArg = vi.mocked(prisma.user.create).mock.calls[0][0];
+    expect(decrypt((createArg as { data: { emailEnc: string } }).data.emailEnc)).toBe(
+      normalizeEmail(VALID.email)
+    );
   });
 
   it("400 on invalid input", async () => {
