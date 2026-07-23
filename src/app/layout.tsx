@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { Cormorant_Garamond, Mulish } from "next/font/google";
 import { getCurrentUser } from "@/lib/auth";
@@ -27,6 +27,17 @@ export const metadata: Metadata = {
   description: "Connect with a mental health provider",
 };
 
+// Lock the mobile viewport: fit device width, no auto/pinch zoom (stops iOS
+// focus-zoom on inputs). viewportFit: cover pairs with the safe-area insets in
+// globals.css so content clears the notch/home indicator.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
+};
+
 export default async function RootLayout({
   children,
 }: {
@@ -43,14 +54,14 @@ export default async function RootLayout({
           Skip to content
         </a>
         <header className="sticky top-0 z-40 border-b border-edge/80 bg-mist/85 backdrop-blur-md">
-          <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
+          <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4">
             <Link
               href="/"
               className="font-serif text-2xl font-semibold tracking-tight text-ink transition-colors duration-300 hover:text-fern-deep"
             >
               Haven
             </Link>
-            <nav className="flex items-center gap-6 text-sm">
+            <nav className="flex items-center gap-4 text-sm sm:gap-6">
               {user ? (
                 <>
                   {user.role === "USER" && (
@@ -77,7 +88,9 @@ export default async function RootLayout({
                       Admin
                     </Link>
                   )}
-                  <span className="text-ink-faint">{userName(user)}</span>
+                  <span className="hidden text-ink-faint sm:inline">
+                    {userName(user)}
+                  </span>
                   <LogoutButton redirectTo={logoutRedirect(user.role)} />
                 </>
               ) : (
@@ -100,11 +113,11 @@ export default async function RootLayout({
           </div>
         </header>
         <CrisisBar isProvider={user?.role === "PROVIDER"} />
-        <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-6 py-12">
+        <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6 sm:py-12">
           {children}
         </main>
         <footer className="border-t border-edge/80">
-          <div className="mx-auto flex max-w-5xl flex-col gap-2 px-6 py-8 text-xs text-ink-faint sm:flex-row sm:items-center sm:justify-between">
+          <div className="mx-auto flex max-w-5xl flex-col gap-2 px-4 py-6 text-xs text-ink-faint sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-8">
             <p>
               <span className="font-serif text-sm italic text-ink-soft">
                 Haven

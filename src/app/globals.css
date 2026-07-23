@@ -26,12 +26,21 @@
 
 html {
   scroll-behavior: smooth;
+  /* Guard against any child forcing sideways scroll on small screens. */
+  overflow-x: hidden;
+  /* Stop mobile browsers from re-inflating text in landscape. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
   background: var(--color-mist);
   color: var(--color-ink);
   font-family: var(--font-sans);
+  /* viewportFit: cover exposes the notch/home-indicator zones; keep content
+     clear of them (0 on non-notched devices, so desktop is unaffected). */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
 /* Fine grain so flat surfaces don't read as sterile vectors */
