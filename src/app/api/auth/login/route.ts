@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { blindIndex, verifyPassword } from "@/lib/crypto";
 import { createSession, setSessionCookie } from "@/lib/auth";
 import { rateLimitOr429 } from "@/lib/ratelimit";
+import { normalizeEmail } from "@/lib/email";
 
 const loginSchema = z.object({
   email: z.string().trim().email(),
@@ -22,7 +23,7 @@ export async function POST(req: Request) {
   const { email, password } = parsed.data;
 
   const user = await prisma.user.findUnique({
-    where: { emailHash: blindIndex(email) },
+    where: { emailHash: blindIndex(normalizeEmail(email)) },
   });
   // Same error for unknown email vs wrong password (no account enumeration).
   if (!user || !(await verifyPassword(password, user.passwordHash))) {

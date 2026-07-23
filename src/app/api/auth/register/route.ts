@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { blindIndex, encrypt, hashPassword } from "@/lib/crypto";
 import { createSession, setSessionCookie } from "@/lib/auth";
 import { rateLimitOr429 } from "@/lib/ratelimit";
+import { normalizeEmail } from "@/lib/email";
 
 const registerSchema = z.object({
   name: z.string().trim().min(1).max(100),
@@ -23,9 +24,19 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   }
-  const { name, email, password } = parsed.data;
-
+  const { name, password } = parsed.data;
+  const email = normalizeEmail(parsed.data.email);
   const emailHash = blindIndex(email);
+
+  // Invite-only: the email must be pre-approved by an admin.
+  const allowed = await prisma.allowedEmail.findUnique({ where: { emailHash } });
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "Registration is invite-only." },
+      { status: 403 }
+    );
+  }
+
   const existing = await prisma.user.findUnique({ where: { emailHash } });
   if (existing) {
     return NextResponse.json(
