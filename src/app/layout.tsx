@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { userName } from "@/lib/pii";
 import { LogoutButton } from "@/components/LogoutButton";
 import { CrisisBar } from "@/components/CrisisBar";
+import { logoutRedirect } from "@/lib/logoutRedirect";
 import "./globals.css";
 
 const cormorant = Cormorant_Garamond({
@@ -77,7 +78,7 @@ export default async function RootLayout({
                     </Link>
                   )}
                   <span className="text-ink-faint">{userName(user)}</span>
-                  <LogoutButton />
+                  <LogoutButton redirectTo={logoutRedirect(user.role)} />
                 </>
               ) : (
                 <>
