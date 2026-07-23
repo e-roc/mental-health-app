@@ -54,7 +54,8 @@ async function main() {
   });
   console.log(`Admin ready: admin@demo.local (${admin.id})`);
 
-  for (const p of AI_PROVIDERS) {
+  // Demo seeds only the first provider; the rest stay here for reference.
+  for (const p of AI_PROVIDERS.slice(0, 1)) {
     const user = await upsertAccount({
       name: p.name,
       email: p.email,

@@ -23,8 +23,10 @@ services:
     numInstances: 1          # pilot = single instance. Set 2+ for HA (LISTEN/NOTIFY
                              # already fans out across instances — no code change).
     healthCheckPath: /api/health
-    # Migrations run as a pre-deploy step, not on boot (per Dockerfile:20).
-    preDeployCommand: npx prisma migrate deploy
+    # Migrations + idempotent demo seed run as a pre-deploy step, not on boot
+    # (per Dockerfile:20). Seed uses upsert, so re-running each deploy is safe;
+    # it needs APP_INDEX_KEY/APP_ENCRYPTION_KEY (set below) to match login hashing.
+    preDeployCommand: npx prisma migrate deploy && npx tsx prisma/seed.ts
     envVars:
       - key: NODE_ENV
         value: production    # redundant with Dockerfile ENV, kept explicit.

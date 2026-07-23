@@ -26,8 +26,6 @@ All seeded accounts use password `demo-password-123` (demo only — rotate for a
 | --- | --- | --- |
 | Admin | `admin@demo.local` | ADMIN |
 | Dr. Ava Chen (AI Test) | `ava.chen@demo.local` | PROVIDER — anxiety, stress, sleep |
-| Dr. Sam Rivera (AI Test) | `sam.rivera@demo.local` | PROVIDER — depression, grief, relationships |
-| Dr. Maya Okafor (AI Test) | `maya.okafor@demo.local` | PROVIDER — trauma, substance-use, stress |
 
 The three AI test providers auto-accept chat requests and send canned supportive replies so the full flow is demoable without a human on the other end. Real (human) provider accounts go through the normal ping → accept flow.
 
