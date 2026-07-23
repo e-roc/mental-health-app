@@ -1,0 +1,40 @@
+name: CI
+
+# Runs on PRs and pushes to main. Render auto-deploys on push to the deploy
+# branch; this gate catches lint/test/build failures first. Tests mock the DB
+# (vi.mock "@/lib/db"), so no Postgres service is needed here.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+
+      # Prisma Client is imported across the app; generate it before typecheck/build.
+      - run: npx prisma generate
+
+      - run: npm run lint
+
+      - run: npm run test
+
+      # `next build` doesn't call validateEnv (that runs in server.ts at boot),
+      # but supply schema-valid placeholders so any env read during build passes.
+      - run: npm run build
+        env:
+          NODE_ENV: production
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+          APP_BASE_URL: https://ci.invalid
+          APP_ENCRYPTION_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
+          APP_INDEX_KEY: "1111111111111111111111111111111111111111111111111111111111111111"
