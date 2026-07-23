@@ -1,0 +1,51 @@
+# Render Blueprint — pilot deployment (synthetic data, no BAA yet).
+#
+# One persistent Docker web service (Next.js custom server + /ws WebSockets)
+# plus a managed Postgres. WebSockets and SIGTERM-drained zero-downtime deploys
+# are native on Render; the app's LISTEN/NOTIFY bus (src/lib/pubsub.ts) needs a
+# DIRECT Postgres connection — Render's connectionString is direct, so it works.
+#
+# Deploy: push this file to the connected branch, then in the Render dashboard
+# "New > Blueprint" and point it at this repo. Set the three sync:false secrets
+# (APP_BASE_URL, APP_ENCRYPTION_KEY, APP_INDEX_KEY) in the dashboard.
+#
+# BAA upgrade later: recreate this same Blueprint inside a HIPAA-enabled Scale
+# workspace and sign the BAA before any real patient data. See the plan file.
+
+services:
+  - type: web
+    name: mental-health-app
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter            # 0.5 CPU / 512 MB, ~$7/mo. Bump to `standard` if CPU-bound.
+    region: oregon           # match the database region to keep DB latency low.
+    branch: main             # deploy branch — change if you deploy from another.
+    numInstances: 1          # pilot = single instance. Set 2+ for HA (LISTEN/NOTIFY
+                             # already fans out across instances — no code change).
+    healthCheckPath: /api/health
+    # Migrations run as a pre-deploy step, not on boot (per Dockerfile:20).
+    preDeployCommand: npx prisma migrate deploy
+    envVars:
+      - key: NODE_ENV
+        value: production    # redundant with Dockerfile ENV, kept explicit.
+      - key: DATABASE_URL
+        # Direct internal connection string (required for LISTEN/NOTIFY).
+        # NOTE: Prisma's default pool + 2 raw bus connections per instance is
+        # well under Postgres Basic's ~97-connection cap at pilot scale. If you
+        # scale to many instances, cap Prisma by switching this to sync:false
+        # and appending `?connection_limit=5`.
+        fromDatabase:
+          name: mental-health-db
+          property: connectionString
+      - key: APP_BASE_URL
+        sync: false          # set to the live https URL, e.g. https://mental-health-app.onrender.com
+      - key: APP_ENCRYPTION_KEY
+        sync: false          # 32-byte hex. Losing this = unrecoverable PHI. Back it up.
+      - key: APP_INDEX_KEY
+        sync: false          # 32-byte hex, MUST differ from APP_ENCRYPTION_KEY.
+
+databases:
+  - name: mental-health-db
+    plan: basic-256mb        # ~$7/mo, ~97 connections, encrypted at rest + daily backups.
+    region: oregon
+    postgresMajorVersion: "16"
