@@ -18,6 +18,7 @@ describe("DELETE /api/admin/users/[id]", () => {
   it("401 for non-admin", async () => {
     vi.mocked(requireRole).mockResolvedValue(null as never);
     expect((await call("u1")).status).toBe(401);
+    expect(prisma.user.delete).not.toHaveBeenCalled();
   });
   it("409 when deleting yourself", async () => {
     vi.mocked(requireRole).mockResolvedValue(ADMIN as never);
@@ -28,6 +29,7 @@ describe("DELETE /api/admin/users/[id]", () => {
     vi.mocked(requireRole).mockResolvedValue(ADMIN as never);
     vi.mocked(prisma.user.findUnique).mockResolvedValue(null as never);
     expect((await call("u1")).status).toBe(404);
+    expect(prisma.user.delete).not.toHaveBeenCalled();
   });
   it("409 when the target is not a USER", async () => {
     vi.mocked(requireRole).mockResolvedValue(ADMIN as never);
@@ -41,5 +43,14 @@ describe("DELETE /api/admin/users/[id]", () => {
     const res = await call("u1");
     expect(res.status).toBe(200);
     expect(prisma.user.delete).toHaveBeenCalledWith({ where: { id: "u1" } });
+  });
+  it("200 when the user is deleted concurrently (P2025 is idempotent success)", async () => {
+    vi.mocked(requireRole).mockResolvedValue(ADMIN as never);
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({ id: "u1", role: "USER" } as never);
+    vi.mocked(prisma.user.delete).mockRejectedValue(
+      Object.assign(new Error("gone"), { code: "P2025" }) as never
+    );
+    const res = await call("u1");
+    expect(res.status).toBe(200);
   });
 });

@@ -30,6 +30,13 @@ export async function DELETE(
     );
   }
 
-  await prisma.user.delete({ where: { id } });
+  try {
+    await prisma.user.delete({ where: { id } });
+  } catch (e) {
+    if (!(e && typeof e === "object" && "code" in e && (e as { code?: string }).code === "P2025")) {
+      throw e;
+    }
+    // Row already gone (concurrent delete) — idempotent success.
+  }
   return NextResponse.json({ ok: true });
 }

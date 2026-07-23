@@ -14,6 +14,13 @@ export async function DELETE(
   const row = await prisma.allowedEmail.findUnique({ where: { id } });
   if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  await prisma.allowedEmail.delete({ where: { id } });
+  try {
+    await prisma.allowedEmail.delete({ where: { id } });
+  } catch (e) {
+    if (!(e && typeof e === "object" && "code" in e && (e as { code?: string }).code === "P2025")) {
+      throw e;
+    }
+    // Row already gone (concurrent delete) — idempotent success.
+  }
   return NextResponse.json({ ok: true });
 }

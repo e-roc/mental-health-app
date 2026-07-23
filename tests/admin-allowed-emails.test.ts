@@ -87,4 +87,13 @@ describe("DELETE /api/admin/allowed-emails/[id]", () => {
     expect(res.status).toBe(200);
     expect(prisma.allowedEmail.delete).toHaveBeenCalledWith({ where: { id: "ae1" } });
   });
+  it("200 when the row is deleted concurrently (P2025 is idempotent success)", async () => {
+    vi.mocked(requireRole).mockResolvedValue(ADMIN as never);
+    vi.mocked(prisma.allowedEmail.findUnique).mockResolvedValue({ id: "ae1" } as never);
+    vi.mocked(prisma.allowedEmail.delete).mockRejectedValue(
+      Object.assign(new Error("gone"), { code: "P2025" }) as never
+    );
+    const res = await DELETE(new Request("http://test"), { params });
+    expect(res.status).toBe(200);
+  });
 });

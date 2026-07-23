@@ -12,6 +12,7 @@ vi.mock("next/headers", () => ({
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
 import { hashPassword, hashToken } from "@/lib/crypto";
+import { cookies } from "next/headers";
 import { POST } from "@/app/api/admin/password/route";
 
 beforeAll(() => {
@@ -51,5 +52,12 @@ describe("POST /api/admin/password", () => {
     expect(prisma.authSession.deleteMany).toHaveBeenCalledWith({
       where: { userId: "admin1", NOT: { tokenHash: hashToken("current-tok") } },
     });
+  });
+  it("200 and skips session revocation when no session cookie is present (fail closed)", async () => {
+    vi.mocked(requireRole).mockResolvedValue((await admin()) as never);
+    vi.mocked(cookies).mockResolvedValueOnce({ get: () => undefined } as never);
+    const res = await post({ currentPassword: "oldpass1", newPassword: "newpass12" });
+    expect(res.status).toBe(200);
+    expect(prisma.authSession.deleteMany).not.toHaveBeenCalled();
   });
 });

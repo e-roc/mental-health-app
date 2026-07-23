@@ -39,12 +39,11 @@ export async function POST(req: Request) {
 
   // Invalidate every other session for this admin; keep the current one alive.
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
-  await prisma.authSession.deleteMany({
-    where: {
-      userId: admin.id,
-      ...(token ? { NOT: { tokenHash: hashToken(token) } } : {}),
-    },
-  });
+  if (token) {
+    await prisma.authSession.deleteMany({
+      where: { userId: admin.id, NOT: { tokenHash: hashToken(token) } },
+    });
+  }
 
   return NextResponse.json({ ok: true });
 }
